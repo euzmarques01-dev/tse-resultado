@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TSE – Eleições Municipais</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+:root{--azul:#0b5ed7;--laranja:#ff9800;--cinza:#dee2e6}
+*{box-sizing:border-box;font-family:Roboto}
+body{margin:0;background:#f4f6f8}
+header{background:var(--azul);color:#fff;padding:12px 16px;display:flex;justify-content:space-between}
+header button{border:none;border-radius:20px;padding:6px 14px;font-weight:700;cursor:pointer}
+main{padding:16px}
+.card{background:#fff;border-radius:14px;padding:16px;margin-bottom:16px;box-shadow:0 6px 16px rgba(0,0,0,.08)}
+.barra{height:18px;background:#ddd;border-radius:20px;overflow:hidden;margin:6px 0}
+.barra span{display:block;height:100%;background:linear-gradient(90deg,#0b5ed7,#3d8bfd)}
+.capitais{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.capital{background:var(--cinza);border-radius:12px;padding:8px;text-align:center;font-weight:700;cursor:pointer}
+.candidato{display:flex;gap:12px;margin-bottom:14px}
+.candidato img{width:64px;height:64px;border-radius:50%;border:2px solid var(--azul)}
+.percentual{font-weight:700;color:var(--azul)}
+.status{padding:4px 8px;border-radius:6px;font-size:12px;font-weight:700;color:#fff;margin-left:6px}
+.eleito{background:var(--azul)}
+.segundo{background:var(--laranja)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;justify-content:center;align-items:center}
+.modal .box{background:#fff;width:520px;max-height:90vh;overflow:auto;border-radius:14px;padding:16px}
+input,select,button{width:100%;padding:8px;margin-bottom:8px}
+.admin-candidato{border:1px solid #ddd;padding:8px;border-radius:10px;margin-bottom:8px}
+.resumo{display:flex;gap:20px;font-weight:700}
+</style>
+</head>
+
+<body>
+
+<header>
+<strong>TSE – ELEIÇÕES MUNICIPAIS</strong>
+<button onclick="login()">PAINEL DO FUNDADOR</button>
+</header>
+
+<main>
+
+<div class="card">
+<h2 id="tituloCidade">Selecione uma capital</h2>
+<div class="barra"><span id="barraUrna"></span></div>
+<p>Urnas apuradas: <strong id="pctUrnaLabel">0%</strong></p>
+
+<div class="resumo">
+<div>Brancos: <span id="brancosLabel">0</span></div>
+<div>Nulos: <span id="nulosLabel">0</span></div>
+</div>
+</div>
+
+<div class="card"><h2>Prefeito</h2><div id="listaPrefeito"></div></div>
+<div class="card"><h2>Vereadores</h2><div id="listaVereador"></div></div>
+
+<div class="card">
+<h2>Capitais</h2>
+<div class="capitais" id="capitais"></div>
+</div>
+
+</main>
+
+<div class="modal" id="painel">
+<div class="box">
+<h3>NAÇÃO BRASILEIRA</h3>
+
+<input type="range" min="0" max="100" id="pctUrna">
+<small>Urnas: <span id="pctLabel">0%</span></small>
+
+<input type="color" id="corCidade">
+<input type="number" id="brancos" placeholder="Votos em branco">
+<input type="number" id="nulos" placeholder="Votos nulos">
+
+<button onclick="salvarMunicipio()">Salvar dados do município</button>
+
+<hr>
+
+<select id="tipo">
+<option value="prefeito">Prefeito</option>
+<option value="vereador">Vereador</option>
+</select>
+
+<input id="nome" placeholder="Nome do candidato">
+<input id="partido" placeholder="Partido">
+<input type="number" id="votos" placeholder="Votos">
+<input type="file" id="foto" accept="image/*">
+
+<button onclick="addCandidato()">Adicionar candidato</button>
+
+<h4>Candidatos</h4>
+<div id="adminLista"></div>
+
+<button onclick="fechar()">Fechar</button>
+</div>
+</div>
+
+<!-- FIREBASE MODULAR -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, update, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD-cXt9IsaFaNekY4GyHVlRD5B75GdnnBE",
+  authDomain: "resultado-531c3.firebaseapp.com",
+  databaseURL: "https://tse-resultado-default-rtdb.firebaseio.com",
+  projectId: "tse-resultado",
+  storageBucket: "resultado-531c3.firebasestorage.app",
+  messagingSenderId: "692625968060",
+  appId: "1:692625968060:web:1461b7061f11e8066cb9b9"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+window.db=db;
+window.ref=ref;
+window.update=update;
+window.onValue=onValue;
+</script>
+
+<script>
+const capitaisLista={
+AC:"Rio Branco",AL:"Maceió",AP:"Macapá",AM:"Manaus",BA:"Salvador",
+CE:"Fortaleza",DF:"Brasília",ES:"Vitória",GO:"Goiânia",MA:"São Luís",
+MT:"Cuiabá",MS:"Campo Grande",MG:"Belo Horizonte",PA:"Belém",
+PB:"João Pessoa",PR:"Curitiba",PE:"Recife",PI:"Teresina",
+RJ:"Rio de Janeiro",RN:"Natal",RS:"Porto Alegre",RO:"Porto Velho",
+RR:"Boa Vista",SC:"Florianópolis",SP:"São Paulo",SE:"Aracaju",TO:"Palmas"
+};
+
+let cidadeAtual=null;
+let dados={},prefeito={},vereadores={};
+const f=n=>Number(n||0).toLocaleString("pt-BR");
+
+Object.keys(capitaisLista).forEach(uf=>{
+dados[uf]={pct:0,brancos:0,nulos:0,cor:"#dee2e6"};
+prefeito[uf]=[];
+vereadores[uf]=[];
+capitais.innerHTML+=`<div class="capital" id="c_${uf}" onclick="abrir('${uf}')">
+${capitaisLista[uf]}<br><small>${uf}</small></div>`;
+});
+
+function login(){if(prompt("Senha do fundador")==="2007") painel.style.display="flex";}
+function fechar(){painel.style.display="none";}
+
+function abrir(uf){
+cidadeAtual=uf;
+tituloCidade.textContent=capitaisLista[uf]+" / "+uf;
+onValue(ref(db,"municipios/"+uf),s=>{
+if(!s.exists()) return;
+const d=s.val();
+dados[uf]=d;
+prefeito[uf]=d.prefeito||[];
+vereadores[uf]=d.vereadores||[];
+barraUrna.style.width=d.pct+"%";
+pctUrnaLabel.textContent=d.pct+"%";
+pctUrna.value=d.pct||0;
+brancos.value=d.brancos||0;
+nulos.value=d.nulos||0;
+brancosLabel.textContent=f(d.brancos);
+nulosLabel.textContent=f(d.nulos);
+document.getElementById("c_"+uf).style.background=d.cor||"#dee2e6";
+render();
+});
+}
+
+pctUrna.oninput=()=>{
+pctLabel.textContent=pctUrna.value+"%";
+barraUrna.style.width=pctUrna.value+"%";
+};
+
+function salvarMunicipio(){
+update(ref(db,"municipios/"+cidadeAtual),{
+pct:+pctUrna.value,
+brancos:+brancos.value||0,
+nulos:+nulos.value||0,
+cor:corCidade.value,
+prefeito:prefeito[cidadeAtual],
+vereadores:vereadores[cidadeAtual]
+});
+document.getElementById("c_"+cidadeAtual).style.background=corCidade.value;
+}
+
+function addCandidato(){
+const r=new FileReader();
+r.onload=e=>{
+const c={nome:nome.value,partido:partido.value,votos:+votos.value,pct:0,status:"",foto:e.target.result};
+(tipo.value==="prefeito"?prefeito:vereadores)[cidadeAtual].push(c);
+calcular();
+};
+r.readAsDataURL(foto.files[0]);
+}
+
+function calcular(){
+const calc=l=>{
+const t=l.reduce((s,c)=>s+c.votos,0)||1;
+l.forEach(c=>c.pct=((c.votos/t)*100).toFixed(2));
+};
+calc(prefeito[cidadeAtual]);
+calc(vereadores[cidadeAtual]);
+salvarMunicipio();
+}
+
+function setStatus(t,i,s){
+const l=t==="prefeito"?prefeito[cidadeAtual]:vereadores[cidadeAtual];
+l[i].status=l[i].status===s?"":s;
+salvarMunicipio();
+}
+
+function excluir(t,i){
+(t==="prefeito"?prefeito:vereadores)[cidadeAtual].splice(i,1);
+calcular();
+}
+
+function render(){
+listaPrefeito.innerHTML="";
+listaVereador.innerHTML="";
+adminLista.innerHTML="";
+prefeito[cidadeAtual]?.forEach((c,i)=>{
+listaPrefeito.innerHTML+=card(c);
+adminLista.innerHTML+=admin(c,"prefeito",i);
+});
+vereadores[cidadeAtual]?.forEach((c,i)=>{
+listaVereador.innerHTML+=card(c);
+adminLista.innerHTML+=admin(c,"vereador",i);
+});
+}
+
+function card(c){
+return `<div class="candidato">
+<img src="${c.foto}">
+<div><strong>${c.nome}</strong> (${c.partido})
+${c.status==="ELEITO"?'<span class="status eleito">ELEITO</span>':""}
+${c.status==="2T"?'<span class="status segundo">2º TURNO</span>':""}
+<div class="barra"><span style="width:${c.pct}%"></span></div>
+<span class="percentual">${c.pct}%</span> — ${f(c.votos)} votos
+</div></div>`;
+}
+
+function admin(c,t,i){
+return `<div class="admin-candidato">
+<strong>${c.nome}</strong>
+<input type="number" value="${c.votos}"
+onchange="(${t}['${cidadeAtual}'][${i}].votos=parseInt(this.value||0),calcular())">
+<button onclick="setStatus('${t}',${i},'ELEITO')">Eleito</button>
+<button onclick="setStatus('${t}',${i},'2T')">2º Turno</button>
+<button onclick="excluir('${t}',${i})">Excluir</button>
+</div>`;
+}
+</script>
+
+</body>
+</html>
